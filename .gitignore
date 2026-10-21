@@ -1,0 +1,10 @@
+*.retry
+*.pyc
+__pycache__/
+.vagrant/
+*.swp
+*.swo
+*~
+.env
+vault_password
+*.log
