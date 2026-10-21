@@ -1,0 +1,33 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  scrape_timeout: 10s
+
+rule_files:
+  - "rules/*.yml"
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - "alertmanager:9093"
+
+scrape_configs:
+  - job_name: "node"
+    static_configs:
+      - targets:
+          - "vh-fra-001:9100"
+          - "vh-fra-002:9100"
+        labels:
+          region: fra
+          role: kvm_host
+
+  - job_name: "libvirt"
+    static_configs:
+      - targets:
+          - "vh-fra-001:9177"
+          - "vh-fra-002:9177"
+        labels:
+          region: fra
+          role: kvm_host
+    scrape_interval: 30s

@@ -1,0 +1,50 @@
+groups:
+  - name: vm_alerts
+    rules:
+      - alert: VMCrashed
+        expr: changes(libvirt_domain_info_state{state="crashed"}[5m]) > 0
+        labels:
+          severity: critical
+          page: "true"
+        annotations:
+          summary: "VM {{ $labels.domain }} crashed on {{ $labels.instance }}"
+          description: "A customer VM has crashed. Check libvirt logs and host I/O health."
+
+      - alert: VMPausedIOError
+        expr: libvirt_domain_info_state{state="paused"} == 1
+        for: 1m
+        labels:
+          severity: critical
+          page: "true"
+        annotations:
+          summary: "VM {{ $labels.domain }} paused due to I/O error on {{ $labels.instance }}"
+          description: "A VM has been paused, likely due to storage I/O error. Requires manual intervention."
+
+      - alert: VMDown
+        expr: libvirt_domain_info_state{state="shutoff"} == 1
+        for: 5m
+        labels:
+          severity: warning
+          page: "false"
+        annotations:
+          summary: "VM {{ $labels.domain }} is shut off on {{ $labels.instance }}"
+
+      - alert: LibvirtExporterDown
+        expr: up{job="libvirt"} == 0
+        for: 2m
+        labels:
+          severity: warning
+          page: "false"
+        annotations:
+          summary: "Libvirt exporter down on {{ $labels.instance }}"
+          description: "Cannot collect VM metrics from this host."
+
+      - alert: HighVMCount
+        expr: count by (instance) (libvirt_domain_info_state{state="running"}) > 350
+        for: 5m
+        labels:
+          severity: warning
+          page: "false"
+        annotations:
+          summary: "VM count exceeds 350 on {{ $labels.instance }}"
+          description: "Consider migrating VMs to distribute load."

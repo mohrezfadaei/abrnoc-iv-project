@@ -1,0 +1,78 @@
+global:
+  resolve_timeout: 5m
+  smtp_from: "alerts@abrnoc.com"
+  smtp_smarthost: "smtp.internal:587"
+  smtp_require_tls: true
+
+templates:
+  - "/etc/alertmanager/templates/*.tmpl"
+
+route:
+  receiver: default-slack
+  group_by: ["alertname", "instance"]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+  routes:
+    - matchers:
+        - page="true"
+      receiver: pagerduty-critical
+      continue: true
+
+    - matchers:
+        - severity="critical"
+        - page="true"
+      receiver: oncall-phone
+      group_wait: 10s
+      repeat_interval: 15m
+
+    - matchers:
+        - severity="warning"
+      receiver: slack-warnings
+      group_wait: 1m
+      repeat_interval: 8h
+
+    - matchers:
+        - alertname="HostDown"
+      receiver: pagerduty-critical
+      group_wait: 10s
+      repeat_interval: 5m
+
+receivers:
+  - name: default-slack
+    slack_configs:
+      - api_url: "https://hooks.slack.com/services/PLACEHOLDER"
+        channel: "#infra-alerts"
+        title: '{{ "{{" }} .GroupLabels.alertname {{ "}}" }}'
+        text: '{{ "{{" }} range .Alerts {{ "}}" }}{{ "{{" }} .Annotations.summary {{ "}}" }}\n{{ "{{" }} end {{ "}}" }}'
+        send_resolved: true
+
+  - name: slack-warnings
+    slack_configs:
+      - api_url: "https://hooks.slack.com/services/PLACEHOLDER"
+        channel: "#infra-warnings"
+        send_resolved: true
+
+  - name: pagerduty-critical
+    pagerduty_configs:
+      - service_key: "PLACEHOLDER"
+        severity: critical
+
+  - name: oncall-phone
+    pagerduty_configs:
+      - service_key: "PLACEHOLDER"
+        severity: critical
+
+inhibit_rules:
+  - source_matchers:
+      - alertname="HostDown"
+    target_matchers:
+      - severity=~"warning|critical"
+    equal: ["instance"]
+
+  - source_matchers:
+      - alertname="RAIDDegraded"
+    target_matchers:
+      - alertname="HighDiskLatency"
+    equal: ["instance"]

@@ -1,0 +1,170 @@
+groups:
+  - name: disk_alerts
+    rules:
+      - alert: HighDiskLatency
+        expr: rate(node_disk_read_time_seconds_total[5m]) / rate(node_disk_reads_completed_total[5m]) > 0.1 or rate(node_disk_write_time_seconds_total[5m]) / rate(node_disk_writes_completed_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          page: "true"
+        annotations:
+          summary: "Disk latency above 100ms on {{ $labels.instance }}"
+          description: "Device {{ $labels.device }} on {{ $labels.instance }} has sustained high I/O latency for over 5 minutes. Investigate NVMe health via smartctl."
+
+      - alert: DiskLatencyWarning
+        expr: rate(node_disk_read_time_seconds_total[5m]) / rate(node_disk_reads_completed_total[5m]) > 0.02 or rate(node_disk_write_time_seconds_total[5m]) / rate(node_disk_writes_completed_total[5m]) > 0.02
+        for: 10m
+        labels:
+          severity: warning
+          page: "false"
+        annotations:
+          summary: "Disk latency elevated on {{ $labels.instance }}"
+          description: "Device {{ $labels.device }} averaging over 20ms latency. This could be early sign of drive degradation."
+
+      - alert: NVMeCriticalWarning
+        expr: node_hwmon_temp_celsius{chip=~"nvme.*"} > 70
+        for: 2m
+        labels:
+          severity: critical
+          page: "true"
+        annotations:
+          summary: "NVMe temperature critical on {{ $labels.instance }}"
+          description: "NVMe device is above 70C, risk of thermal throttling or failure."
+
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 < 10
+        for: 5m
+        labels:
+          severity: warning
+          page: "false"
+        annotations:
+          summary: "Disk space below 10% on {{ $labels.instance }}:{{ $labels.mountpoint }}"
+
+      - alert: DiskSpaceCritical
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) * 100 < 5
+        for: 2m
+        labels:
+          severity: critical
+          page: "true"
+        annotations:
+          summary: "Disk space below 5% on {{ $labels.instance }}:{{ $labels.mountpoint }}"
+
+  - name: raid_alerts
+    rules:
+      - alert: RAIDDegraded
+        expr: node_md_disks{state="failed"} > 0
+        for: 1m
+        labels:
+          severity: critical
+          page: "true"
+        annotations:
+          summary: "RAID array {{ $labels.device }} degraded on {{ $labels.instance }}"
+          description: "A disk in md array {{ $labels.device }} has failed. The array is running with reduced redundancy. Replace the failed disk immediately."
+
+      - alert: RAIDSyncInProgress
+        expr: node_md_disks_required - ignoring(state) (node_md_disks{state="active"}) > 0
+        for: 1m
+        labels:
+          severity: warning
+          page: "false"
+        annotations:
+          summary: "RAID array {{ $labels.device }} is rebuilding on {{ $labels.instance }}"
+
+  - name: system_alerts
+    rules:
+      - alert: HighLoadAverage
+        expr: node_load15 / count without(cpu) (node_cpu_seconds_total{mode="idle"}) > 2.0
+        for: 15m
+        labels:
+          severity: warning
+          page: "false"
+        annotations:
+          summary: "Load average is high on {{ $labels.instance }}"
+          description: "15-minute load average exceeds 2x the number of CPUs. Check for runaway processes or I/O bottlenecks."
+
+      - alert: CriticalLoadAverage
+        expr: node_load5 / count without(cpu) (node_cpu_seconds_total{mode="idle"}) > 4.0
+        for: 5m
+        labels:
+          severity: critical
+          page: "true"
+        annotations:
+          summary: "Load average critically high on {{ $labels.instance }}"
+
+      - alert: MemoryPressureHigh
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > 0.90
+        for: 5m
+        labels:
+          severity: warning
+          page: "false"
+        annotations:
+          summary: "Memory usage above 90% on {{ $labels.instance }}"
+
+      - alert: MemoryPressureCritical
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > 0.95
+        for: 2m
+        labels:
+          severity: critical
+          page: "true"
+        annotations:
+          summary: "Memory usage above 95% on {{ $labels.instance }}"
+          description: "OOM killer will start terminating VM processes soon. Migrate VMs or free memory."
+
+      - alert: OOMKillDetected
+        expr: increase(node_vmstat_oom_kill[5m]) > 0
+        labels:
+          severity: critical
+          page: "true"
+        annotations:
+          summary: "OOM kill detected on {{ $labels.instance }}"
+          description: "The kernel OOM killer was invoked. A VM process was likely terminated."
+
+      - alert: HostDown
+        expr: up{job="node"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          page: "true"
+        annotations:
+          summary: "Host {{ $labels.instance }} is unreachable"
+          description: "Node exporter on {{ $labels.instance }} has been down for more than 1 minute."
+
+  - name: network_alerts
+    rules:
+      - alert: NetworkPacketLoss
+        expr: rate(node_netdev_receive_drop_total{device!~"lo|veth.*|tap.*"}[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          page: "false"
+        annotations:
+          summary: "Network packet loss on {{ $labels.instance }}:{{ $labels.device }}"
+          description: "More than 10 packets/sec being dropped on receive."
+
+      - alert: NetworkPacketLossCritical
+        expr: rate(node_netdev_receive_drop_total{device!~"lo|veth.*|tap.*"}[5m]) > 100
+        for: 2m
+        labels:
+          severity: critical
+          page: "true"
+        annotations:
+          summary: "Heavy packet loss on {{ $labels.instance }}:{{ $labels.device }}"
+          description: "Over 100 packets/sec being dropped. Likely NIC buffer exhaustion or driver issue."
+
+      - alert: NetworkInterfaceDown
+        expr: node_network_up{device!~"lo|veth.*|tap.*|virbr.*"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          page: "true"
+        annotations:
+          summary: "Network interface {{ $labels.device }} is down on {{ $labels.instance }}"
+
+      - alert: NetworkReceiveErrors
+        expr: rate(node_netdev_receive_errs_total{device!~"lo|veth.*|tap.*"}[5m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+          page: "false"
+        annotations:
+          summary: "Receive errors on {{ $labels.instance }}:{{ $labels.device }}"
