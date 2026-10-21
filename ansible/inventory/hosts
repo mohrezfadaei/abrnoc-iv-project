@@ -1,0 +1,7 @@
+[kvm_hosts]
+# vh-fra-001 ansible_host=10.40.1.1
+# vh-fra-002 ansible_host=10.40.1.2
+
+[kvm_hosts:vars]
+ansible_user=ansible
+ansible_python_interpreter=/usr/bin/python3

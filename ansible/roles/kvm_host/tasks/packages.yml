@@ -1,0 +1,64 @@
+---
+- name: update apt cache
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: install base packages
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - sudo
+      - vim
+      - tmux
+      - htop
+      - iotop
+      - sysstat
+      - dstat
+      - strace
+      - tcpdump
+      - net-tools
+      - bridge-utils
+      - ethtool
+      - smartmontools
+      - nvme-cli
+      - mdadm
+      - lvm2
+      - thin-provisioning-tools
+      - pciutils
+      - numactl
+      - irqbalance
+      - unattended-upgrades
+      - needrestart
+      - fail2ban
+      - acl
+      - jq
+      - python3
+      - python3-pip
+      - python3-libvirt
+      - python3-lxml
+    state: present
+
+- name: enable irqbalance
+  ansible.builtin.systemd:
+    name: irqbalance
+    enabled: true
+    state: started
+
+- name: configure unattended-upgrades for security only
+  ansible.builtin.copy:
+    content: |
+      Unattended-Upgrade::Allowed-Origins {
+          "${distro_id}:${distro_codename}-security";
+      };
+      Unattended-Upgrade::AutoFixInterruptedDpkg "true";
+      Unattended-Upgrade::Remove-Unused-Dependencies "true";
+      Unattended-Upgrade::Automatic-Reboot "false";
+    dest: /etc/apt/apt.conf.d/50unattended-upgrades
+    owner: root
+    group: root
+    mode: "0644"

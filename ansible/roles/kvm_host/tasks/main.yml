@@ -1,0 +1,36 @@
+---
+- name: include users and ssh hardening
+  ansible.builtin.include_tasks: users.yml
+  tags: [users, ssh]
+
+- name: include firewall configuration
+  ansible.builtin.include_tasks: firewall.yml
+  tags: [firewall]
+
+- name: include ntp configuration
+  ansible.builtin.include_tasks: ntp.yml
+  tags: [ntp]
+
+- name: include kernel tuning
+  ansible.builtin.include_tasks: kernel.yml
+  tags: [kernel]
+
+- name: include logging configuration
+  ansible.builtin.include_tasks: logging.yml
+  tags: [logging]
+
+- name: include base packages
+  ansible.builtin.include_tasks: packages.yml
+  tags: [packages]
+
+- name: include kvm/libvirt setup
+  ansible.builtin.include_tasks: libvirt.yml
+  tags: [libvirt, kvm]
+
+- name: include networking (bridge)
+  ansible.builtin.include_tasks: networking.yml
+  tags: [networking]
+
+- name: include monitoring exporters
+  ansible.builtin.include_tasks: monitoring.yml
+  tags: [monitoring]

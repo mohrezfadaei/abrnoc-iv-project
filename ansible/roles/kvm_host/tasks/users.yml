@@ -1,0 +1,51 @@
+---
+- name: create admin groups
+  ansible.builtin.group:
+    name: "{{ item.name }}"
+    gid: "{{ item.uid }}"
+    state: present
+  loop: "{{ admin_users }}"
+
+- name: create admin users
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    uid: "{{ item.uid }}"
+    group: "{{ item.name }}"
+    groups: sudo,libvirt
+    shell: "{{ item.shell }}"
+    create_home: true
+    state: present
+  loop: "{{ admin_users }}"
+
+- name: set authorized keys for admin users
+  ansible.posix.authorized_key:
+    user: "{{ item.0.name }}"
+    key: "{{ item.1 }}"
+    exclusive: false
+    state: present
+  loop: "{{ admin_users | subelements('ssh_keys', skip_missing=True) }}"
+  when: item.1 != ''
+
+- name: configure sudoers for ansible user
+  ansible.builtin.copy:
+    content: "ansible ALL=(ALL) NOPASSWD:ALL\n"
+    dest: /etc/sudoers.d/ansible
+    owner: root
+    group: root
+    mode: "0440"
+    validate: "visudo -cf %s"
+
+- name: harden sshd configuration
+  ansible.builtin.template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    owner: root
+    group: root
+    mode: "0600"
+    validate: "sshd -t -f %s"
+  notify: restart sshd
+
+- name: disable root password login
+  ansible.builtin.user:
+    name: root
+    password: "!"

@@ -1,0 +1,55 @@
+---
+# ssh
+ssh_port: 22
+ssh_permit_root_login: "no"
+ssh_password_authentication: "no"
+ssh_max_auth_tries: 3
+ssh_client_alive_interval: 300
+ssh_client_alive_count_max: 2
+
+# users
+admin_users:
+  - name: ansible
+    uid: 1002
+    shell: /bin/bash
+    ssh_keys:
+      - "{{ lookup('file', 'files/ansible_id_ed25519.pub', errors='ignore') | default('ssh-ed25519 PLACEHOLDER') }}"
+  - name: deploy
+    uid: 1003
+    shell: /bin/bash
+    ssh_keys: []
+
+# firewall
+firewall_allowed_tcp:
+  - "{{ ssh_port }}"
+  - "9100"   # node_exporter
+  - "9177"   # libvirt_exporter
+  - "16509"  # libvirt tls
+
+# ntp
+ntp_servers:
+  - 0.de.pool.ntp.org
+  - 1.de.pool.ntp.org
+  - 2.de.pool.ntp.org
+
+# kernel
+vm_swappiness: 1
+vm_dirty_ratio: 10
+vm_dirty_background_ratio: 5
+kernel_panic_timeout: 10
+transparent_hugepages: madvise
+
+# libvirt
+libvirt_pool_path: /var/lib/libvirt/images
+libvirt_default_network: false
+bridge_interface: br0
+bridge_physical_interface: enp65s0f0
+
+# storage
+storage_scheduler: none
+
+# monitoring
+node_exporter_version: "1.8.2"
+libvirt_exporter_version: "3.1.0"
+node_exporter_listen: "0.0.0.0:9100"
+libvirt_exporter_listen: "0.0.0.0:9177"

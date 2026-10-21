@@ -1,0 +1,18 @@
+[Unit]
+Description=Prometheus Libvirt Exporter
+After=network-online.target libvirtd.service
+Wants=network-online.target
+Requires=libvirtd.service
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/local/bin/libvirt_exporter \
+    --web.listen-address="{{ libvirt_exporter_listen }}" \
+    --libvirt.uri="qemu:///system"
+Restart=on-failure
+RestartSec=5
+SyslogIdentifier=libvirt_exporter
+
+[Install]
+WantedBy=multi-user.target

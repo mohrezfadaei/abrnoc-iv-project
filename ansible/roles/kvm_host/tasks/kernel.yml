@@ -1,0 +1,51 @@
+---
+- name: set sysctl parameters for kvm host
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/90-kvm-host.conf
+    reload: true
+    state: present
+  loop:
+    - { key: "vm.swappiness", value: "{{ vm_swappiness }}" }
+    - { key: "vm.dirty_ratio", value: "{{ vm_dirty_ratio }}" }
+    - { key: "vm.dirty_background_ratio", value: "{{ vm_dirty_background_ratio }}" }
+    - { key: "kernel.panic", value: "{{ kernel_panic_timeout }}" }
+    - { key: "kernel.panic_on_oops", value: "1" }
+    - { key: "net.ipv4.ip_forward", value: "1" }
+    - { key: "net.bridge.bridge-nf-call-iptables", value: "0" }
+    - { key: "net.bridge.bridge-nf-call-ip6tables", value: "0" }
+    - { key: "net.core.somaxconn", value: "4096" }
+    - { key: "net.core.netdev_max_backlog", value: "5000" }
+    - { key: "fs.inotify.max_user_watches", value: "524288" }
+    - { key: "fs.file-max", value: "2097152" }
+    - { key: "vm.max_map_count", value: "262144" }
+    - { key: "kernel.hung_task_timeout_secs", value: "300" }
+    - { key: "vm.overcommit_memory", value: "1" }
+
+- name: configure transparent hugepages
+  ansible.builtin.copy:
+    content: "{{ transparent_hugepages }}"
+    dest: /sys/kernel/mm/transparent_hugepage/enabled
+    mode: "0644"
+  changed_when: false
+
+- name: persist transparent hugepages via grub
+  ansible.builtin.lineinfile:
+    path: /etc/default/grub
+    regexp: '^GRUB_CMDLINE_LINUX_DEFAULT='
+    line: 'GRUB_CMDLINE_LINUX_DEFAULT="quiet transparent_hugepage={{ transparent_hugepages }} intel_iommu=on iommu=pt"'
+    backup: true
+  notify: update grub
+
+- name: load required kernel modules
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+    persistent: present
+  loop:
+    - kvm
+    - kvm_intel
+    - vhost_net
+    - br_netfilter
+    - bonding

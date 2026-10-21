@@ -1,0 +1,6 @@
+---
+- name: provision kvm virtualization hosts
+  hosts: kvm_hosts
+  become: true
+  roles:
+    - kvm_host

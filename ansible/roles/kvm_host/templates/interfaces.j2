@@ -1,0 +1,6 @@
+auto {{ bridge_interface }}
+iface {{ bridge_interface }} inet manual
+    bridge_ports {{ bridge_physical_interface }}
+    bridge_stp off
+    bridge_fd 0
+    bridge_maxwait 0

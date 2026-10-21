@@ -1,0 +1,86 @@
+---
+- name: install kvm and libvirt packages
+  ansible.builtin.apt:
+    name:
+      - qemu-system-x86
+      - qemu-utils
+      - libvirt-daemon-system
+      - libvirt-clients
+      - virtinst
+      - ovmf
+      - libguestfs-tools
+      - virt-top
+    state: present
+
+- name: verify kvm hardware support
+  ansible.builtin.command: grep -cE '(vmx|svm)' /proc/cpuinfo
+  register: kvm_support
+  changed_when: false
+  failed_when: kvm_support.stdout | int < 1
+
+- name: configure libvirtd
+  ansible.builtin.template:
+    src: libvirtd.conf.j2
+    dest: /etc/libvirt/libvirtd.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart libvirtd
+
+- name: configure qemu
+  ansible.builtin.template:
+    src: qemu.conf.j2
+    dest: /etc/libvirt/qemu.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart libvirtd
+
+- name: enable libvirtd
+  ansible.builtin.systemd:
+    name: libvirtd
+    enabled: true
+    state: started
+
+- name: create vm storage directory
+  ansible.builtin.file:
+    path: "{{ libvirt_pool_path }}"
+    state: directory
+    owner: libvirt-qemu
+    group: libvirt-qemu
+    mode: "0711"
+
+- name: define default storage pool
+  community.libvirt.virt_pool:
+    command: define
+    name: default
+    xml: |
+      <pool type='dir'>
+        <name>default</name>
+        <target>
+          <path>{{ libvirt_pool_path }}</path>
+        </target>
+      </pool>
+
+- name: start and autostart default storage pool
+  community.libvirt.virt_pool:
+    name: default
+    state: active
+    autostart: true
+
+- name: remove default nat network if not needed
+  community.libvirt.virt_net:
+    name: default
+    state: absent
+  when: not libvirt_default_network
+  failed_when: false
+
+- name: set io scheduler for nvme devices
+  ansible.builtin.copy:
+    content: |
+      ACTION=="add|change", KERNEL=="nvme[0-9]*n[0-9]*", ATTR{queue/scheduler}="{{ storage_scheduler }}"
+    dest: /etc/udev/rules.d/60-io-scheduler.rules
+    owner: root
+    group: root
+    mode: "0644"
+  notify: reload udev

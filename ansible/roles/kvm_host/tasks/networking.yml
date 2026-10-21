@@ -1,0 +1,22 @@
+---
+- name: install bridge networking dependencies
+  ansible.builtin.apt:
+    name:
+      - bridge-utils
+      - vlan
+    state: present
+
+- name: deploy bridge network configuration
+  ansible.builtin.template:
+    src: interfaces.j2
+    dest: /etc/network/interfaces.d/br0
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart networking
+
+- name: enable 802.1q vlan module
+  community.general.modprobe:
+    name: 8021q
+    state: present
+    persistent: present

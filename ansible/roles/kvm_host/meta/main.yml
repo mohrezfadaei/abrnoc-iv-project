@@ -1,0 +1,15 @@
+---
+galaxy_info:
+  author: Mohammad Reza Fadaei
+  description: Provisions a Debian server as a KVM virtualization host
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+  galaxy_tags:
+    - kvm
+    - libvirt
+    - virtualization
+dependencies: []

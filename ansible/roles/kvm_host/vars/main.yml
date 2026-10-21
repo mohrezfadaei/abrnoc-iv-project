@@ -1,0 +1,11 @@
+---
+# internal variables, not meant to be overridden
+required_kernel_modules:
+  - kvm
+  - kvm_intel
+  - vhost_net
+  - br_netfilter
+  - bonding
+  - 8021q
+
+exporter_arch: "linux-amd64"

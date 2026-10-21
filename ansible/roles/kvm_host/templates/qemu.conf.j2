@@ -1,0 +1,12 @@
+user = "libvirt-qemu"
+group = "libvirt-qemu"
+dynamic_ownership = 1
+security_driver = "apparmor"
+security_default_confined = 1
+remember_owner = 1
+
+max_processes = 131072
+max_files = 131072
+
+vnc_listen = "127.0.0.1"
+vnc_auto_unix_socket = 1

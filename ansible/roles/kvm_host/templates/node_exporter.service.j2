@@ -1,0 +1,32 @@
+[Unit]
+Description=Prometheus Node Exporter
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=prometheus
+Group=prometheus
+ExecStart=/usr/local/bin/node_exporter \
+    --web.listen-address="{{ node_exporter_listen }}" \
+    --collector.systemd \
+    --collector.processes \
+    --collector.ntp \
+    --collector.diskstats \
+    --collector.filesystem \
+    --collector.meminfo \
+    --collector.netdev \
+    --collector.mdstat \
+    --collector.hwmon \
+    --collector.textfile \
+    --collector.textfile.directory=/var/lib/node_exporter/textfile
+Restart=on-failure
+RestartSec=5
+SyslogIdentifier=node_exporter
+ProtectSystem=strict
+ProtectHome=yes
+NoNewPrivileges=yes
+ReadOnlyPaths=/
+
+[Install]
+WantedBy=multi-user.target

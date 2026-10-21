@@ -1,0 +1,91 @@
+---
+- name: create prometheus system user
+  ansible.builtin.user:
+    name: prometheus
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+
+- name: download node_exporter
+  ansible.builtin.get_url:
+    url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
+    dest: "/tmp/node_exporter-{{ node_exporter_version }}.tar.gz"
+    mode: "0644"
+  register: node_exporter_download
+  changed_when: false
+
+- name: extract node_exporter
+  ansible.builtin.unarchive:
+    src: "/tmp/node_exporter-{{ node_exporter_version }}.tar.gz"
+    dest: /tmp
+    remote_src: true
+  when: node_exporter_download is succeeded
+  changed_when: false
+
+- name: install node_exporter binary
+  ansible.builtin.copy:
+    src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
+    dest: /usr/local/bin/node_exporter
+    owner: root
+    group: root
+    mode: "0755"
+    remote_src: true
+  notify: restart node_exporter
+
+- name: deploy node_exporter systemd unit
+  ansible.builtin.template:
+    src: node_exporter.service.j2
+    dest: /etc/systemd/system/node_exporter.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart node_exporter
+
+- name: enable node_exporter
+  ansible.builtin.systemd:
+    name: node_exporter
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: download libvirt_exporter
+  ansible.builtin.get_url:
+    url: "https://github.com/Tinkoff/libvirt-exporter/releases/download/v{{ libvirt_exporter_version }}/libvirt-exporter-{{ libvirt_exporter_version }}.linux-amd64.tar.gz"
+    dest: "/tmp/libvirt_exporter-{{ libvirt_exporter_version }}.tar.gz"
+    mode: "0644"
+  register: libvirt_exporter_download
+  changed_when: false
+
+- name: extract libvirt_exporter
+  ansible.builtin.unarchive:
+    src: "/tmp/libvirt_exporter-{{ libvirt_exporter_version }}.tar.gz"
+    dest: /tmp
+    remote_src: true
+  when: libvirt_exporter_download is succeeded
+  changed_when: false
+
+- name: install libvirt_exporter binary
+  ansible.builtin.copy:
+    src: "/tmp/libvirt-exporter-{{ libvirt_exporter_version }}.linux-amd64/libvirt-exporter"
+    dest: /usr/local/bin/libvirt_exporter
+    owner: root
+    group: root
+    mode: "0755"
+    remote_src: true
+  notify: restart libvirt_exporter
+
+- name: deploy libvirt_exporter systemd unit
+  ansible.builtin.template:
+    src: libvirt_exporter.service.j2
+    dest: /etc/systemd/system/libvirt_exporter.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify: restart libvirt_exporter
+
+- name: enable libvirt_exporter
+  ansible.builtin.systemd:
+    name: libvirt_exporter
+    enabled: true
+    state: started
+    daemon_reload: true

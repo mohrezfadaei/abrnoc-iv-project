@@ -1,0 +1,50 @@
+---
+- name: restart sshd
+  ansible.builtin.systemd:
+    name: sshd
+    state: restarted
+
+- name: reload nftables
+  ansible.builtin.systemd:
+    name: nftables
+    state: restarted
+
+- name: restart chrony
+  ansible.builtin.systemd:
+    name: chrony
+    state: restarted
+
+- name: restart journald
+  ansible.builtin.systemd:
+    name: systemd-journald
+    state: restarted
+
+- name: restart libvirtd
+  ansible.builtin.systemd:
+    name: libvirtd
+    state: restarted
+
+- name: update grub
+  ansible.builtin.command: update-grub
+  changed_when: true
+
+- name: reload udev
+  ansible.builtin.command: udevadm control --reload-rules && udevadm trigger
+  changed_when: true
+
+- name: restart networking
+  ansible.builtin.systemd:
+    name: networking
+    state: restarted
+
+- name: restart node_exporter
+  ansible.builtin.systemd:
+    name: node_exporter
+    state: restarted
+    daemon_reload: true
+
+- name: restart libvirt_exporter
+  ansible.builtin.systemd:
+    name: libvirt_exporter
+    state: restarted
+    daemon_reload: true
