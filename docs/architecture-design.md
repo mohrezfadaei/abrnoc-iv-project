@@ -13,26 +13,49 @@ The tradeoff: Ceph has higher operational complexity and requires dedicated hard
 
 ## Cluster Topology
 
-```
-                    ┌─────────────────────────────────────────────┐
-                    │              Ceph Cluster                   │
-                    │                                             │
-    ┌───────────┐   │   ┌──────┐  ┌──────┐  ┌──────┐            │
-    │  Compute  │   │   │ MON  │  │ MON  │  │ MON  │            │
-    │  vh-001   │───┼──▶│  01  │  │  02  │  │  03  │            │
-    │  (VMs)    │   │   └──────┘  └──────┘  └──────┘            │
-    └───────────┘   │                                             │
-    ┌───────────┐   │   ┌──────────────────────────────────┐     │
-    │  Compute  │   │   │        OSD Nodes                  │     │
-    │  vh-002   │───┼──▶│  osd-01  osd-02  osd-03  osd-04 │     │
-    │  (VMs)    │   │   │  osd-05  osd-06  osd-07  osd-08 │     │
-    └───────────┘   │   │  (NVMe drives, 2-4 OSDs/node)    │     │
-    ┌───────────┐   │   └──────────────────────────────────┘     │
-    │  Compute  │   │                                             │
-    │  vh-003   │───┼──▶  Network: 2x 25GbE bonded per node      │
-    │  (VMs)    │   │    (dedicated storage VLAN)                 │
-    └───────────┘   │                                             │
-                    └─────────────────────────────────────────────┘
+```mermaid
+graph LR
+    subgraph Compute Nodes
+        vh001[vh-001<br/>VMs]
+        vh002[vh-002<br/>VMs]
+        vh003[vh-003<br/>VMs]
+    end
+
+    subgraph Ceph Cluster
+        subgraph Monitors
+            mon01[MON 01]
+            mon02[MON 02]
+            mon03[MON 03]
+        end
+
+        subgraph OSD Nodes
+            osd01[osd-01]
+            osd02[osd-02]
+            osd03[osd-03]
+            osd04[osd-04]
+            osd05[osd-05]
+            osd06[osd-06]
+            osd07[osd-07]
+            osd08[osd-08]
+        end
+    end
+
+    net[[2x 25GbE bonded<br/>dedicated storage VLAN]]
+
+    vh001 --> net
+    vh002 --> net
+    vh003 --> net
+    net --> mon01
+    net --> mon02
+    net --> mon03
+    net --> osd01
+    net --> osd02
+    net --> osd03
+    net --> osd04
+    net --> osd05
+    net --> osd06
+    net --> osd07
+    net --> osd08
 ```
 
 **Node roles:**
@@ -78,29 +101,37 @@ RPO = 0 for hardware failures because Ceph replicates synchronously. The 24h RPO
 
 **CRUSH hierarchy:**
 
-```
-root default
-├── rack rack01
-│   ├── host osd-01
-│   │   ├── osd.0  (nvme0)
-│   │   └── osd.1  (nvme1)
-│   └── host osd-02
-│       ├── osd.2
-│       └── osd.3
-├── rack rack02
-│   ├── host osd-03
-│   │   ├── osd.4
-│   │   └── osd.5
-│   └── host osd-04
-│       ├── osd.6
-│       └── osd.7
-└── rack rack03
-    ├── host osd-05
-    │   ├── osd.8
-    │   └── osd.9
-    └── host osd-06
-        ├── osd.10
-        └── osd.11
+```mermaid
+graph TD
+    root[root default]
+
+    root --> rack01[rack01]
+    root --> rack02[rack02]
+    root --> rack03[rack03]
+
+    rack01 --> h01[host osd-01]
+    rack01 --> h02[host osd-02]
+
+    h01 --> osd0["osd.0 (nvme0)"]
+    h01 --> osd1["osd.1 (nvme1)"]
+    h02 --> osd2[osd.2]
+    h02 --> osd3[osd.3]
+
+    rack02 --> h03[host osd-03]
+    rack02 --> h04[host osd-04]
+
+    h03 --> osd4[osd.4]
+    h03 --> osd5[osd.5]
+    h04 --> osd6[osd.6]
+    h04 --> osd7[osd.7]
+
+    rack03 --> h05[host osd-05]
+    rack03 --> h06[host osd-06]
+
+    h05 --> osd8[osd.8]
+    h05 --> osd9[osd.9]
+    h06 --> osd10[osd.10]
+    h06 --> osd11[osd.11]
 ```
 
 **Replication policy:**
